@@ -32,6 +32,9 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Setup Cloud SQL Proxy
         run: |
           curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
@@ -41,6 +44,10 @@ jobs:
         env:
           INSTANCE_CONNECTION_NAME: ${{ vars.DIGITAL_MEDIA_CLOUDSQL_INSTANCE }}
         run: |
+          # Fetch database password from Secret Manager
+          DB_PASSWORD=$(gcloud secrets versions access latest --secret=DIGITAL_MEDIA_DATABASE_URL --project=haderach-ai | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')
+          export DATABASE_URL="postgresql://digital-media-app:${DB_PASSWORD}@localhost:5432/digital-media"
+
           ./cloud-sql-proxy "$INSTANCE_CONNECTION_NAME" &
           sleep 5
           python scripts/run_migrations.py
