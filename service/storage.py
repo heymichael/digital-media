@@ -2,14 +2,14 @@
 
 import logging
 import mimetypes
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
 import google.auth
-from google.auth import compute_engine
-from google.auth.transport import requests
+import google.auth.compute_engine
+import google.auth.iam
+import google.auth.transport.requests
 from google.cloud import storage
 
 from .config import get_settings
@@ -17,8 +17,8 @@ from .config import get_settings
 logger = logging.getLogger(__name__)
 
 _client: storage.Client | None = None
-_signing_credentials: compute_engine.IDTokenCredentials | None = None
-_service_account_email: str | None = None
+_signing_credentials = None
+_auth_request = None
 
 
 def get_storage_client() -> storage.Client:
@@ -30,14 +30,24 @@ def get_storage_client() -> storage.Client:
 
 
 def get_signing_credentials():
-    """Get credentials and service account email for signing URLs in Cloud Run."""
-    global _signing_credentials, _service_account_email
+    """Get signing credentials for generating signed URLs in Cloud Run.
+    
+    Cloud Run uses compute engine credentials which don't have a private key.
+    We wrap them with an IAM signer to use the signBlob API instead.
+    """
+    global _signing_credentials, _auth_request
     
     if _signing_credentials is None:
         credentials, project = google.auth.default()
+        _auth_request = google.auth.transport.requests.Request()
         
+        # Refresh credentials to ensure they're valid
+        if not credentials.valid:
+            credentials.refresh(_auth_request)
+        
+        # Get the service account email
         if hasattr(credentials, "service_account_email"):
-            _service_account_email = credentials.service_account_email
+            sa_email = credentials.service_account_email
         else:
             # Fetch from metadata server for compute engine credentials
             import requests as req
@@ -46,19 +56,22 @@ def get_signing_credentials():
                 headers={"Metadata-Flavor": "Google"},
                 timeout=5,
             )
-            _service_account_email = resp.text
+            sa_email = resp.text
         
-        # Create signing credentials that use IAM API
-        _signing_credentials = compute_engine.IDTokenCredentials(
-            requests.Request(),
-            target_audience="",
-            use_metadata_identity_endpoint=True,
+        # Create an IAM signer that uses the signBlob API
+        signer = google.auth.iam.Signer(
+            _auth_request,
+            credentials,
+            sa_email,
         )
-        # Refresh to get the underlying credentials working
-        auth_req = requests.Request()
-        credentials.refresh(auth_req)
+        
+        # Create signing credentials with the IAM signer
+        _signing_credentials = google.auth.compute_engine.Credentials(
+            service_account_email=sa_email,
+            signer=signer,
+        )
     
-    return _signing_credentials, _service_account_email
+    return _signing_credentials
 
 
 def get_bucket_name(org_slug: str) -> str:
@@ -90,16 +103,15 @@ def generate_signed_upload_url(
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(gcs_path)
 
-    # In Cloud Run, we must use IAM-based signing (no private key available)
-    _, service_account_email = get_signing_credentials()
+    # In Cloud Run, use signing credentials with IAM signer
+    signing_creds = get_signing_credentials()
     
     url = blob.generate_signed_url(
         version="v4",
         expiration=timedelta(minutes=expiration_minutes),
         method="PUT",
         content_type=content_type,
-        service_account_email=service_account_email,
-        access_token=client._credentials.token,
+        credentials=signing_creds,
     )
     return url
 
@@ -119,15 +131,14 @@ def generate_signed_download_url(
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(gcs_path)
 
-    # In Cloud Run, we must use IAM-based signing (no private key available)
-    _, service_account_email = get_signing_credentials()
+    # In Cloud Run, use signing credentials with IAM signer
+    signing_creds = get_signing_credentials()
     
     url = blob.generate_signed_url(
         version="v4",
         expiration=timedelta(minutes=expiration_minutes),
         method="GET",
-        service_account_email=service_account_email,
-        access_token=client._credentials.token,
+        credentials=signing_creds,
     )
     return url
 
