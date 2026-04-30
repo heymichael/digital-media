@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+*.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.report.json
+
+# Credentials (never commit)
+*-key.json
+*-credentials.json
+*.pem
+
+# macOS
+.DS_Store
+
+# Local data
+*.db
+*.sqlite
+local-storage/

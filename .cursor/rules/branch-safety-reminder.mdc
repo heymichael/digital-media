@@ -1,0 +1,10 @@
+---
+description: Branch safety — no direct commits to main
+alwaysApply: true
+---
+
+# Branch Safety
+
+Canonical rule lives in `haderach-platform/.cursor/rules/branch-safety-reminder.mdc`. Read that file for the full policy.
+
+**Short version:** Never commit or push directly to main. Always create a feature branch, push with `-u`, open a PR, and merge via `gh pr merge`.

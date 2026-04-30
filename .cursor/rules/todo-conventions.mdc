@@ -1,0 +1,8 @@
+---
+description: Task management redirect — canonical conventions live in haderach-tasks
+globs: []
+---
+
+# Task management conventions
+
+See `../haderach-tasks/.cursor/rules/todo-conventions.mdc` for the full task lifecycle and formatting rules. This repo does not duplicate those rules.

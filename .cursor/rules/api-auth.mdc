@@ -1,0 +1,30 @@
+---
+description: API authentication requirements
+globs: []
+---
+
+# Digital Media API Authentication
+
+All Digital Media API endpoints (except `/health`) require Firebase ID token authentication.
+
+## Request requirements
+
+1. **Authorization header**: `Bearer <firebase-id-token>`
+2. **X-Active-Org header**: Required org slug for tenant scoping
+
+## Authentication flow
+
+1. Client obtains Firebase ID token via Firebase Auth SDK
+2. Client includes token in `Authorization: Bearer <token>` header
+3. Client includes active org in `X-Active-Org: <slug>` header
+4. Service verifies token via Firebase Admin SDK
+5. Service scopes all queries to the specified org
+
+## Local development
+
+Set `DEV_AUTH_EMAIL` in `.env` to bypass Firebase verification locally. The org slug is still required via `X-Active-Org` header.
+
+## Error responses
+
+- `401 Unauthorized`: Missing/invalid/expired token
+- `400 Active-Org-Required`: Missing X-Active-Org header

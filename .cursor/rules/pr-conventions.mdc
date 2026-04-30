@@ -1,0 +1,10 @@
+---
+description: PR conventions pointer
+alwaysApply: true
+---
+
+# PR conventions
+
+Canonical rule lives in `haderach-platform/.cursor/rules/pr-conventions.mdc`. Read that file for the full policy.
+
+**Local additions:** In **Deploy / Ops Notes**, explicitly call out Cloud Run deployment, Cloud SQL implications, GCS bucket changes, Secret Manager secrets, and any Vertex AI integration changes.

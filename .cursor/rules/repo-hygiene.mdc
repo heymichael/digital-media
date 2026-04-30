@@ -1,0 +1,21 @@
+---
+description: App repo boundaries and documentation-first guardrails
+alwaysApply: true
+---
+
+# Digital Media Service Boundary Rule
+
+This repository is the Digital Media asset management service for the Haderach platform. It provides image storage, metadata management, search, and reference tracking consumed by frontend apps and CMS integrations.
+
+- Keep strict separation of concerns:
+  - This repo owns the Digital Media API implementation, storage helpers, embedding/tagging services, and Postgres CRUD.
+  - CMS integration (field types, pickers) lives in haderach-cms and consumes this API.
+  - Platform orchestration, promotion, and cross-app routing checks remain outside this repo.
+- The Digital Media database (`haderach-digital-media` Cloud SQL instance) is private to this service. No other service reads or writes it directly. All access goes through the API.
+- Keep service logic and service tests in this repository; do not add platform orchestration logic here.
+- Keep naming kebab-case for repo/path conventions; use snake_case for Python modules as language convention requires.
+- Prefer explicit docs and small config contracts over heavy scripts or premature automation.
+- Use or update docs when behavior/contracts change:
+  - `README.md`
+  - `docs/architecture.md`
+- When adding new structure, keep it minimal and production-minded.
