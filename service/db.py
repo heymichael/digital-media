@@ -286,8 +286,13 @@ def search_assets_semantic(
     org_slug: str,
     query_embedding: list[float],
     limit: int = 20,
+    similarity_threshold: float = 0.3,
 ) -> list[dict]:
-    """Semantic search using pgvector cosine distance."""
+    """Semantic search using pgvector cosine distance.
+
+    Only returns results with similarity >= threshold to avoid returning
+    irrelevant results when the query doesn't match any assets well.
+    """
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -295,10 +300,12 @@ def search_assets_semantic(
                 SELECT a.*, 1 - (e.embedding <=> %s::vector) AS similarity
                 FROM assets a
                 JOIN asset_embeddings e ON a.id = e.asset_id
-                WHERE a.org_slug = %s AND a.deleted_at IS NULL
+                WHERE a.org_slug = %s
+                  AND a.deleted_at IS NULL
+                  AND 1 - (e.embedding <=> %s::vector) >= %s
                 ORDER BY e.embedding <=> %s::vector
                 LIMIT %s
                 """,
-                (query_embedding, org_slug, query_embedding, limit),
+                (query_embedding, org_slug, query_embedding, similarity_threshold, query_embedding, limit),
             )
             return [dict(row) for row in cur.fetchall()]

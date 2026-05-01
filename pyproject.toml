@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Digital Media asset management service for Haderach"
 requires-python = ">=3.12"
 readme = "README.md"
-
 dependencies = [
     "fastapi>=0.109.0",
     "uvicorn>=0.27.0",
@@ -27,6 +26,9 @@ dev = [
     "httpx>=0.26.0",
     "ruff>=0.2.0",
 ]
+
+[tool.setuptools]
+packages = ["service"]
 
 [tool.ruff]
 line-length = 100
