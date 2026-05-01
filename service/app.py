@@ -293,21 +293,23 @@ def search_assets(
     org_slug = caller["org_slug"]
     results = []
 
-    if req.mode in ("text", "hybrid"):
-        text_results = db.search_assets_fulltext(org_slug, req.query, limit=req.limit)
-        results.extend(text_results)
+    # TODO: Re-enable text search after semantic threshold is tuned
+    # if req.mode in ("text", "hybrid"):
+    #     text_results = db.search_assets_fulltext(org_slug, req.query, limit=req.limit)
+    #     results.extend(text_results)
 
-    if req.mode in ("semantic", "hybrid"):
-        try:
-            query_embedding = get_embedding_sync(req.query)
-            semantic_results = db.search_assets_semantic(
-                org_slug, query_embedding, limit=req.limit
-            )
-            for r in semantic_results:
-                if r["id"] not in [x["id"] for x in results]:
-                    results.append(r)
-        except Exception:
-            logger.exception("Semantic search failed")
+    # Force semantic-only for now to debug threshold
+    try:
+        query_embedding = get_embedding_sync(req.query)
+        semantic_results = db.search_assets_semantic(
+            org_slug, query_embedding, limit=req.limit
+        )
+        logger.info(f"Semantic search returned {len(semantic_results)} results")
+        for r in semantic_results:
+            logger.info(f"  - {r.get('filename', 'unknown')}: similarity={r.get('similarity', 'N/A')}")
+        results.extend(semantic_results)
+    except Exception:
+        logger.exception("Semantic search failed")
 
     return [Asset(**r) for r in results[:req.limit]]
 

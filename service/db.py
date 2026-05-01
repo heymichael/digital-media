@@ -286,7 +286,7 @@ def search_assets_semantic(
     org_slug: str,
     query_embedding: list[float],
     limit: int = 20,
-    similarity_threshold: float = 0.3,
+    similarity_threshold: float = 0.5,
 ) -> list[dict]:
     """Semantic search using pgvector cosine distance.
 
