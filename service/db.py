@@ -53,6 +53,26 @@ def get_conn():
         _pool.putconn(conn)
 
 
+class DuplicateFilenameError(Exception):
+    """Raised when attempting to upload a file with a filename that already exists for the org."""
+    pass
+
+
+def filename_exists(org_slug: str, filename: str) -> bool:
+    """Check if a filename already exists for this org (excluding soft-deleted)."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM assets
+                WHERE org_slug = %s AND filename = %s AND deleted_at IS NULL
+                LIMIT 1
+                """,
+                (org_slug, filename),
+            )
+            return cur.fetchone() is not None
+
+
 def create_asset(
     org_slug: str,
     gcs_bucket: str,
@@ -64,7 +84,14 @@ def create_asset(
     height: int | None,
     uploaded_by: str,
 ) -> dict:
-    """Insert a new asset record and return it."""
+    """Insert a new asset record and return it.
+    
+    Raises:
+        DuplicateFilenameError: If filename already exists for this org.
+    """
+    if filename_exists(org_slug, filename):
+        raise DuplicateFilenameError(f"File '{filename}' already exists")
+    
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(

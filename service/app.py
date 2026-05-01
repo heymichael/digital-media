@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import db
+from .db import DuplicateFilenameError
 from .auth import get_verified_user, warm_firebase_public_keys
 from .config import get_settings
 from .embeddings import (
@@ -158,17 +159,23 @@ def finalize_upload(
     content_type = meta.get("content_type", "application/octet-stream")
     size_bytes = meta.get("size", 0)
 
-    asset = db.create_asset(
-        org_slug=org_slug,
-        gcs_bucket=bucket,
-        gcs_path=req.gcs_path,
-        filename=filename,
-        content_type=content_type,
-        size_bytes=size_bytes,
-        width=None,
-        height=None,
-        uploaded_by=email,
-    )
+    try:
+        asset = db.create_asset(
+            org_slug=org_slug,
+            gcs_bucket=bucket,
+            gcs_path=req.gcs_path,
+            filename=filename,
+            content_type=content_type,
+            size_bytes=size_bytes,
+            width=None,
+            height=None,
+            uploaded_by=email,
+        )
+    except DuplicateFilenameError:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A file named '{filename}' already exists. Please rename or delete the existing file.",
+        )
 
     asset_id = UUID(str(asset["id"]))
     gcs_uri = f"gs://{bucket}/{req.gcs_path}"
